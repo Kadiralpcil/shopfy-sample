@@ -1,13 +1,10 @@
-import { Page, Card, Text } from "@shopify/polaris";
+import { Page } from '@shopify/polaris';
+import ProductList from '../components/ProductList/ProductList';
 
 const Home = () => {
   return (
     <Page title="Product List">
-      <Card>
-        <Text variant="headingMd" as="h2">
-          Welcome! Product list will be here.
-        </Text>
-      </Card>
+      <ProductList />
     </Page>
   );
 };
