@@ -1,7 +1,6 @@
 import express from "express";
 import sharp from "sharp";
-import path from "path";
-import fs from "fs";
+import { getProduct } from "../services/shopifyGraphQl";
 
 const router = express.Router();
 
@@ -15,20 +14,26 @@ router.post("/resize", async (req, res) => {
         .json({ success: false, message: "Missing required fields" });
     }
 
-    // absolute path to the image
-    const imagePath = path.join(
-      process.cwd(),
-      `public/product${productId}/${imageIndex + 1}.jpg`
-    );
-
-
-    if (!fs.existsSync(imagePath)) {
+    const product = await getProduct(productId.toString());
+    
+    if (!product) {
       return res
         .status(404)
-        .json({ success: false, message: "Image not found at " + imagePath });
+        .json({ success: false, message: "Product not found" });
     }
 
-    const buffer = await sharp(imagePath)
+    const imageUrl = product.images.edges[imageIndex]?.node?.originalSrc;
+    
+    if (!imageUrl) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Image not found" });
+    }
+
+    const imageResponse = await fetch(imageUrl);
+    const imageBuffer = await imageResponse.arrayBuffer();
+
+    const buffer = await sharp(Buffer.from(imageBuffer))
       .extract({
         left: Math.round(crop.x),
         top: Math.round(crop.y),
@@ -43,7 +48,7 @@ router.post("/resize", async (req, res) => {
 
     res.json({ success: true, image: base64 });
   } catch (error) {
-    console.error("Sharp error:", error);
+    console.error("Image processing error:", error);
     res
       .status(500)
       .json({ success: false, message: "Image processing failed" });
