@@ -1,25 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ResourceList,
-  ResourceItem,
-  Text,
-  Thumbnail,
-  Banner,
-  EmptyState,
-} from "@shopify/polaris";
+import { ResourceList, Banner, EmptyState, Pagination } from "@shopify/polaris";
 import { productAPI } from "../../services/api";
 import type { Product } from "../../services/api";
+import ProductItem from "./ProductItem";
+
+const ITEMS_PER_PAGE = 5;
 
 const ProductList = () => {
   // Hooks
   const navigate = useNavigate();
-
-  // States
+  // State
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const [page, setPage] = useState(1);
+  // Effects
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -35,10 +31,31 @@ const ProductList = () => {
 
     fetchProducts();
   }, []);
+  // Handlers
+  const handleProductClick = useCallback(
+    (id: number) => navigate(`/product/${id}`),
+    [navigate]
+  );
+  // Memoization
+  const handleNextPage = useCallback(() => setPage((prev) => prev + 1), []);
+  const handlePreviousPage = useCallback(() => setPage((prev) => prev - 1), []);
 
-  const handleProductClick = (id: number) => {
-    navigate(`/product/${id}`);
-  };
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (page - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return products.slice(startIndex, endIndex);
+  }, [page, products]);
+
+  const emptyStateMarkup = useMemo(
+    () =>
+      !products.length && (
+        <EmptyState
+          heading="There is No Product"
+          image="https://cdn.shopify.com/s/files/1/2376/3301/products/emptystate-files.png"
+        />
+      ),
+    [products]
+  );
 
   if (error) {
     return (
@@ -48,48 +65,39 @@ const ProductList = () => {
     );
   }
 
-  const emptyStateMarkup =
-    !products.length ? (
-      <EmptyState
-        heading="Upload a file to get started"
-        action={{ content: "Upload files" }}
-        image="https://cdn.shopify.com/s/files/1/2376/3301/products/emptystate-files.png"
-      >
-        <p>
-          You can use the Files section to upload images, videos, and other
-          documents
-        </p>
-      </EmptyState>
-    ) : undefined;
-
   return (
-    <ResourceList
-      items={products}
-      loading={loading}
-      emptyState={emptyStateMarkup}
-      renderItem={(product) => {
-        const { id, title, images } = product;
-        const media = images[0] ? (
-          <Thumbnail source={images[0].src} alt={title} />
-        ) : undefined;
+    <>
+      <ResourceList
+        items={paginatedProducts}
+        loading={loading}
+        emptyState={emptyStateMarkup ?? undefined}
+        renderItem={(product) => (
+          <ProductItem
+            key={product.id}
+            product={product}
+            onClick={handleProductClick}
+          />
+        )}
+      />
 
-        return (
-          <ResourceItem
-            id={id.toString()}
-            media={media}
-            onClick={() => handleProductClick(id)}
-            accessibilityLabel={`View details for ${title}`}
-          >
-            <Text variant="bodyMd" fontWeight="bold" as="h3">
-              {title}
-            </Text>
-            <Text variant="bodySm" as="p" tone="subdued">
-              {images.length} image{images.length !== 1 ? "s" : ""} available
-            </Text>
-          </ResourceItem>
-        );
-      }}
-    />
+      {products.length > ITEMS_PER_PAGE && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginTop: "20px",
+            gap: "10px",
+          }}
+        >
+          <Pagination
+            hasPrevious={page > 1}
+            onPrevious={handlePreviousPage}
+            hasNext={page * ITEMS_PER_PAGE < products.length}
+            onNext={handleNextPage}
+          />
+        </div>
+      )}
+    </>
   );
 };
 
