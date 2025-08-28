@@ -43,9 +43,9 @@ A React-based application for resizing Shopify product images for social media p
    Create a `.env` file in the `backend` directory with the following:
    
    ```env
-SHOPIFY_ACCESS_TOKEN=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
-SHOPIFY_STORE_DOMAIN=testalpcil.myshopify.com
-PORT=8000
+    SHOPIFY_ACCESS_TOKEN=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
+    SHOPIFY_STORE_DOMAIN=testalpcil.myshopify.com
+    PORT=8000
    ```
 
 ## Running the Application
@@ -108,5 +108,6 @@ PORT=8000
 - Admin API access token has necessary permissions for product reading
 - Images are accessible via public URLs
 - Development environment with Node.js v18+
+
 
 
