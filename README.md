@@ -1,5 +1,7 @@
-# Shopify - Sample
+# Video link
+https://www.youtube.com/watch?v=QgPTYpE0TjM
 
+# Shopify - Sample
 A React-based application for resizing Shopify product images for social media platforms.
 
 ## Features
@@ -110,6 +112,7 @@ A React-based application for resizing Shopify product images for social media p
 - Admin API access token has necessary permissions for product reading
 - Images are accessible via public URLs
 - Development environment with Node.js v18+
+
 
 
 
