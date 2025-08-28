@@ -4,21 +4,21 @@ import {
   Page,
   Card,
   Button,
-  Select,
-  Text,
-  Box,
+  Banner,
   InlineStack,
   BlockStack,
   Toast,
   Frame,
 } from "@shopify/polaris";
-import Cropper, { type Area } from "react-easy-crop";
+import { type Area } from "react-easy-crop";
 import { productAPI } from "../services/api";
 import type { Product } from "../services/api";
-import { useErrorHandler } from "../hooks/useErrorHandler";
-import ErrorState from "../components/common/ErrorState";
-import { useLoadingState } from "../hooks/useLoadingState";
 import LoadingState from "../components/common/LoadingState";
+import ErrorState from "../components/common/ErrorState";
+import PlatformSelector from "../components/crop/PlatformSelector";
+import CropEditor from "../components/crop/CropEditor";
+import { useErrorHandler } from "../hooks/useErrorHandler";
+import { useLoadingState } from "../hooks/useLoadingState";
 
 const PLATFORMS = [
   {
@@ -37,13 +37,14 @@ const PLATFORMS = [
 ];
 
 const ImageEdit = () => {
-  // Hooks
   const { productId, imageIndex } = useParams<{
     productId: string;
     imageIndex: string;
   }>();
-  const { error, handleError, retry, clearError } = useErrorHandler(3);
   const navigate = useNavigate();
+
+  // Hooks
+  const { error, handleError, retry, clearError } = useErrorHandler(3);
   const { loadingState, setLoading } = useLoadingState();
 
   // States
@@ -52,39 +53,34 @@ const ImageEdit = () => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
-  const [downloadFaileMessege, setDownloadFailMessege] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
-  // Effects
+  // Fetch product
+  const fetchProduct = useCallback(async () => {
+    if (!productId) return;
+    
+    try {
+      clearError();
+      setLoading(true, 'Loading product...');
+      
+      const data = await productAPI.getProduct(parseInt(productId));
+      setProduct(data);
+      setLoading(false);
+    } catch (err) {
+      setLoading(false);
+      handleError(err as Error, fetchProduct);
+    }
+  }, [productId, handleError, setLoading, clearError]);
+
   useEffect(() => {
-    const fetchProduct = async () => {
-      if (!productId) return;
-      try {
-        clearError();
-        setLoading(true, "Loading Image...", );
-        const data = await productAPI.getProduct(parseInt(productId));
-        setLoading(true, "Loading products...");
-        setProduct(data);
-        setLoading(false);
-      } catch (err) {
-        setLoading(false);
-        handleError(err as Error, fetchProduct);
-      }
-    };
     fetchProduct();
-  }, [productId]);
+  }, [fetchProduct]);
 
-  // Memoization
-  const toggleDownloadFaileMessege = useCallback(
-    () =>
-      setDownloadFailMessege((downloadFaileMessege) => !downloadFaileMessege),
-    []
-  );
-
+  // Handlers
   const onCropComplete = useCallback((_: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
-  // Handlers
   const handleDownload = async () => {
     if (!product || !imageIndex || !croppedAreaPixels || !productId) return;
 
@@ -92,7 +88,8 @@ const ImageEdit = () => {
     if (!platform) return;
 
     try {
-      clearError();
+      setLoading(true, 'Processing image...');
+      
       const base64 = await productAPI.resizeImage(
         parseInt(productId),
         parseInt(imageIndex),
@@ -100,46 +97,53 @@ const ImageEdit = () => {
         { width: platform.width, height: platform.height }
       );
 
+      setLoading(true, 'Processing image...');
+      
       const link = document.createElement("a");
       link.download = `${platform.value}.jpg`;
       link.href = base64;
       link.click();
+      
+      setLoading(false);
     } catch (err) {
-      setDownloadFailMessege(true);
+      setLoading(false);
+      setShowToast(true);
     }
   };
 
   if (error) {
-    <ErrorState error={error} onRetry={retry} onDismiss={clearError} />;
-  }
-
-  if (loadingState.isLoading) {
     return (
-      <LoadingState
-        type="skeleton"
-        message={loadingState.loadingMessage}
-        progress={loadingState.progress}
-        step={loadingState.step}
-        size="large"
-      />
+      <Page title="Error" backAction={{ onAction: () => navigate(`/product/${productId}`) }}>
+        <ErrorState error={error} onRetry={retry} onDismiss={clearError} />
+      </Page>
     );
   }
 
-  const currentImage = product?.images[parseInt(imageIndex ?? "")];
-  const selectedPlatformData = PLATFORMS.find(
-    (p) => p.value === selectedPlatform
-  );
+  if (loadingState.isLoading) {
+    return <LoadingState {...loadingState} />;
+  }
+
+  if (!product || !imageIndex) {
+    return (
+      <Page title="Error">
+        <Banner tone="critical">Product or image not found</Banner>
+      </Page>
+    );
+  }
+
+  const currentImage = product.images[parseInt(imageIndex)];
+  const selectedPlatformData = PLATFORMS.find(p => p.value === selectedPlatform);
 
   return (
     <Frame>
-      {downloadFaileMessege && (
-        <Toast
-          content="Failed to download"
-          onDismiss={toggleDownloadFaileMessege}
-          error
+      {showToast && (
+        <Toast 
+          content="Failed to download" 
+          onDismiss={() => setShowToast(false)} 
+          error 
         />
       )}
-
+      
       <Page
         title="Image Editor"
         backAction={{ onAction: () => navigate(`/product/${productId}`) }}
@@ -147,57 +151,26 @@ const ImageEdit = () => {
         <BlockStack gap="400">
           <Card>
             <BlockStack gap="400">
-              <Text variant="headingMd" as="h2">
-                Resize Image for Social Media
-              </Text>
-              <Select
-                label="Select Platform"
-                options={PLATFORMS.map((platform) => ({
-                  label: `${platform.label} (${platform.width}x${platform.height})`,
-                  value: platform.value,
-                }))}
-                value={selectedPlatform}
-                onChange={setSelectedPlatform}
+              <PlatformSelector
+                platforms={PLATFORMS}
+                selectedPlatform={selectedPlatform}
+                onPlatformChange={setSelectedPlatform}
               />
             </BlockStack>
           </Card>
 
           <Card>
             <BlockStack gap="400">
-              <Text variant="headingMd" as="h2">
-                Crop & Preview
-              </Text>
-
-              <Box padding="400">
-                <div
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    height: 400,
-                    background: "#333",
-                  }}
-                >
-                  <Cropper
-                    image={currentImage?.src}
-                    crop={crop}
-                    zoom={zoom}
-                    aspect={
-                      selectedPlatformData
-                        ? selectedPlatformData.width /
-                          selectedPlatformData.height
-                        : 1
-                    }
-                    onCropChange={setCrop}
-                    onZoomChange={setZoom}
-                    onCropComplete={onCropComplete}
-                  />
-                </div>
-              </Box>
-
-              <Text variant="bodySm" tone="subdued" as="legend">
-                Target size: {selectedPlatformData?.width}x
-                {selectedPlatformData?.height}
-              </Text>
+              <CropEditor
+                imageSrc={currentImage.src}
+                crop={crop}
+                zoom={zoom}
+                aspect={selectedPlatformData ? selectedPlatformData.width / selectedPlatformData.height : 1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+                targetDimensions={selectedPlatformData}
+              />
             </BlockStack>
           </Card>
 
