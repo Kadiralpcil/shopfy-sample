@@ -4,66 +4,65 @@ import {
   Page,
   Card,
   Text,
-  SkeletonPage,
-  SkeletonDisplayText,
-  SkeletonBodyText,
-  Banner,
   Box,
   Grid,
   BlockStack,
   Link,
 } from "@shopify/polaris";
 import { productAPI } from "../services/api";
+import ErrorState from "../components/common/ErrorState";
 import type { Product } from "../services/api";
+import { useErrorHandler } from "../hooks/useErrorHandler";
+import { useLoadingState } from "../hooks/useLoadingState";
+import LoadingState from "../components/common/LoadingState";
 
 const ProductDetail = () => {
+  // Hooks
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { error, handleError, retry, clearError } = useErrorHandler(3);
+  const { loadingState, setLoading } = useLoadingState();
 
   const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProduct = async () => {
       if (!id) return;
-
       try {
-        setLoading(true);
+        clearError();
+        setLoading(true, "Loading product...");
         const data = await productAPI.getProduct(parseInt(id));
+        setLoading(true, "Loading product...");
         setProduct(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong");
-      } finally {
         setLoading(false);
+      } catch (err) {
+        setLoading(false);
+        handleError(err as Error, fetchProduct);
       }
     };
 
     fetchProduct();
   }, [id]);
 
-  if (loading) {
-    return (
-      <SkeletonPage primaryAction>
-        <Card>
-          <SkeletonDisplayText size="small" />
-          <SkeletonBodyText />
-        </Card>
-      </SkeletonPage>
-    );
+  if (error) {
+    <ErrorState error={error} onRetry={retry} onDismiss={clearError} />;
   }
 
-  if (error || !product) {
+if (loadingState.isLoading) {
     return (
-      <Page title="Error">
-        <Banner tone="critical">{error || "Product not found"}</Banner>
-      </Page>
+      <LoadingState
+        type="skeleton"
+        message={loadingState.loadingMessage}
+        progress={loadingState.progress}
+        step={loadingState.step}
+        size="large"
+      />
     );
   }
 
   return (
     <Page
-      title={product.title}
+      title={product?.title}
       backAction={{ onAction: () => navigate("/home") }}
     >
       <Card>
@@ -78,7 +77,7 @@ const ProductDetail = () => {
             </Text>
           </Box>
           <Grid>
-            {product.images.map((image, index) => (
+            {product?.images.map((image, index) => (
               <Grid.Cell key={image.src} columnSpan={{ xs: 6, sm: 4, md: 3 }}>
                 <Card>
                   <Link url={`/edit/${id}/${index}`} removeUnderline>

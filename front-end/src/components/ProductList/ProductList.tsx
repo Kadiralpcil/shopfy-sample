@@ -1,41 +1,50 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ResourceList, Banner, EmptyState, Pagination } from "@shopify/polaris";
+import { ResourceList, EmptyState, Pagination } from "@shopify/polaris";
 import { productAPI } from "../../services/api";
 import type { Product } from "../../services/api";
 import ProductItem from "./ProductItem";
+import { useErrorHandler } from "../../hooks/useErrorHandler";
+import ErrorState from "../common/ErrorState";
+import LoadingState from "../common/LoadingState"; // Import ekle
+import { useLoadingState } from "../../hooks/useLoadingState"; // Import ekle
 
 const ITEMS_PER_PAGE = 5;
 
 const ProductList = () => {
   // Hooks
   const navigate = useNavigate();
+  const { error, handleError, retry, clearError } = useErrorHandler(3);
+  const { loadingState, setLoading } = useLoadingState();
+
   // State
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+
   // Effects
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        setLoading(true);
+        clearError();
+        setLoading(true, "Loading products...");
         const data = await productAPI.getProducts();
+        setLoading(true, "Loading products...");
         setProducts(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong");
-      } finally {
         setLoading(false);
+      } catch (err) {
+        setLoading(false);
+        handleError(err as Error, fetchProducts);
       }
     };
-
     fetchProducts();
-  }, []);
+  }, [handleError, setLoading, clearError]);
+
   // Handlers
   const handleProductClick = useCallback(
     (id: number) => navigate(`/product/${id}`),
     [navigate]
   );
+
   // Memoization
   const handleNextPage = useCallback(() => setPage((prev) => prev + 1), []);
   const handlePreviousPage = useCallback(() => setPage((prev) => prev - 1), []);
@@ -58,10 +67,18 @@ const ProductList = () => {
   );
 
   if (error) {
+    return <ErrorState error={error} onRetry={retry} onDismiss={clearError} />;
+  }
+
+  if (loadingState.isLoading) {
     return (
-      <Banner tone="critical" title="Something went wrong">
-        <p>{error}</p>
-      </Banner>
+      <LoadingState
+        type="spinner"
+        message={loadingState.loadingMessage}
+        progress={loadingState.progress}
+        step={loadingState.step}
+        size="large"
+      />
     );
   }
 
@@ -69,8 +86,7 @@ const ProductList = () => {
     <>
       <ResourceList
         items={paginatedProducts}
-        loading={loading}
-        emptyState={emptyStateMarkup ?? undefined}
+        emptyState={emptyStateMarkup}
         renderItem={(product) => (
           <ProductItem
             key={product.id}

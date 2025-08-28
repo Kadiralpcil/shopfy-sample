@@ -6,19 +6,19 @@ import {
   Button,
   Select,
   Text,
-  Banner,
   Box,
   InlineStack,
   BlockStack,
-  SkeletonPage,
-  SkeletonDisplayText,
-  SkeletonBodyText,
   Toast,
   Frame,
 } from "@shopify/polaris";
 import Cropper, { type Area } from "react-easy-crop";
 import { productAPI } from "../services/api";
 import type { Product } from "../services/api";
+import { useErrorHandler } from "../hooks/useErrorHandler";
+import ErrorState from "../components/common/ErrorState";
+import { useLoadingState } from "../hooks/useLoadingState";
+import LoadingState from "../components/common/LoadingState";
 
 const PLATFORMS = [
   {
@@ -42,12 +42,12 @@ const ImageEdit = () => {
     productId: string;
     imageIndex: string;
   }>();
+  const { error, handleError, retry, clearError } = useErrorHandler(3);
   const navigate = useNavigate();
+  const { loadingState, setLoading } = useLoadingState();
 
   // States
   const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState("instagram_story");
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -59,20 +59,26 @@ const ImageEdit = () => {
     const fetchProduct = async () => {
       if (!productId) return;
       try {
-        setLoading(true);
+        clearError();
+        setLoading(true, "Loading Image...", );
         const data = await productAPI.getProduct(parseInt(productId));
+        setLoading(true, "Loading products...");
         setProduct(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong");
-      } finally {
         setLoading(false);
+      } catch (err) {
+        setLoading(false);
+        handleError(err as Error, fetchProduct);
       }
     };
     fetchProduct();
   }, [productId]);
 
   // Memoization
-  const toggleDownloadFaileMessege = useCallback(() => setDownloadFailMessege((downloadFaileMessege) => !downloadFaileMessege), []);
+  const toggleDownloadFaileMessege = useCallback(
+    () =>
+      setDownloadFailMessege((downloadFaileMessege) => !downloadFaileMessege),
+    []
+  );
 
   const onCropComplete = useCallback((_: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -86,6 +92,7 @@ const ImageEdit = () => {
     if (!platform) return;
 
     try {
+      clearError();
       const base64 = await productAPI.resizeImage(
         parseInt(productId),
         parseInt(imageIndex),
@@ -102,48 +109,37 @@ const ImageEdit = () => {
     }
   };
 
-  if (loading) {
+  if (error) {
+    <ErrorState error={error} onRetry={retry} onDismiss={clearError} />;
+  }
+
+  if (loadingState.isLoading) {
     return (
-      <SkeletonPage primaryAction backAction>
-        <Card>
-          <SkeletonDisplayText size="small" />
-          <SkeletonBodyText />
-        </Card>
-        <Card>
-          <SkeletonDisplayText size="small" />
-          <Box padding="400">
-            <div
-              style={{
-                width: "400px",
-                height: "300px",
-                backgroundColor: "#f6f6f7",
-                borderRadius: "8px",
-              }}
-            />
-          </Box>
-        </Card>
-      </SkeletonPage>
+      <LoadingState
+        type="skeleton"
+        message={loadingState.loadingMessage}
+        progress={loadingState.progress}
+        step={loadingState.step}
+        size="large"
+      />
     );
   }
 
-  if (error || !product || !imageIndex) {
-    return (
-      <Page title="Error">
-        <Banner tone="critical">{error || "Image not found"}</Banner>
-      </Page>
-    );
-  }
-
-  const currentImage = product.images[parseInt(imageIndex)];
+  const currentImage = product?.images[parseInt(imageIndex ?? "")];
   const selectedPlatformData = PLATFORMS.find(
     (p) => p.value === selectedPlatform
   );
- 
+
   return (
     <Frame>
       {downloadFaileMessege && (
-         <Toast content="Failed to download" onDismiss={toggleDownloadFaileMessege}  error/>
+        <Toast
+          content="Failed to download"
+          onDismiss={toggleDownloadFaileMessege}
+          error
+        />
       )}
+
       <Page
         title="Image Editor"
         backAction={{ onAction: () => navigate(`/product/${productId}`) }}
@@ -182,7 +178,7 @@ const ImageEdit = () => {
                   }}
                 >
                   <Cropper
-                    image={currentImage.src}
+                    image={currentImage?.src}
                     crop={crop}
                     zoom={zoom}
                     aspect={
