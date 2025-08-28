@@ -24,17 +24,19 @@ A React-based application for resizing Shopify product images for social media p
 1. **Clone the repository**
    ```bash
    git clone https://github.com/Kadiralpcil/shopfy-sample.git
+   cd .\shopfy-sample\
+
    ```
 
 2. **Install backend dependencies**
    ```bash
-   cd backend
+   cd .\backend\
    npm install
    ```
 
 3. **Install frontend dependencies**
    ```bash
-   cd front-end
+   cd .\front-end\
    npm install
    ```
 
