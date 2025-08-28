@@ -23,8 +23,7 @@ A React-based application for resizing Shopify product images for social media p
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd shopify-image-resizer
+   git clone https://github.com/Kadiralpcil/shopfy-sample.git
    ```
 
 2. **Install backend dependencies**
@@ -35,7 +34,7 @@ A React-based application for resizing Shopify product images for social media p
 
 3. **Install frontend dependencies**
    ```bash
-   cd ../front-end
+   cd front-end
    npm install
    ```
 
@@ -44,17 +43,10 @@ A React-based application for resizing Shopify product images for social media p
    Create a `.env` file in the `backend` directory with the following:
    
    ```env
-   # Shopify Store Configuration
-   SHOPIFY_STORE_DOMAIN=your-store.myshopify.com
-   SHOPIFY_ACCESS_TOKEN=your-admin-api-access-token
-   
-   # Server Configuration
-   PORT=8000
+SHOPIFY_ACCESS_TOKEN=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
+SHOPIFY_STORE_DOMAIN=testalpcil.myshopify.com
+PORT=8000
    ```
-
-   Replace the values with your actual Shopify store credentials:
-   - `SHOPIFY_STORE_DOMAIN`: Your Shopify store domain
-   - `SHOPIFY_ACCESS_TOKEN`: Admin API access token with product read permissions
 
 ## Running the Application
 
@@ -71,9 +63,6 @@ A React-based application for resizing Shopify product images for social media p
    npm run dev
    ```
    The frontend will run on `http://localhost:5173`
-
-3. **Access the application**
-   Open your browser and navigate to `http://localhost:5173`
 
 ## Usage
 
@@ -118,12 +107,6 @@ A React-based application for resizing Shopify product images for social media p
 - Shopify store has products with images
 - Admin API access token has necessary permissions for product reading
 - Images are accessible via public URLs
-- Modern browser with support for ES2020+ features
 - Development environment with Node.js v18+
 
-## Troubleshooting
 
-- Ensure your Shopify access token has the required permissions
-- Verify that your store domain is correct in the environment variables
-- Check that both frontend and backend servers are running
-- Make sure your Shopify store has products with images for testing
