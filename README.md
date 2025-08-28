@@ -52,14 +52,14 @@ A React-based application for resizing Shopify product images for social media p
 
 1. **Start the backend server**
    ```bash
-   cd backend
+   cd .\backend\
    npm run dev
    ```
    The backend will run on `http://localhost:8000`
 
 2. **Start the frontend development server**
    ```bash
-   cd front-end
+   cd .\front-end\
    npm run dev
    ```
    The frontend will run on `http://localhost:5173`
